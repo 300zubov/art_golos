@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Конкурс работ</title>
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
+    .container { padding: 16px; }
+    .card {
+      background: white;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    img { width: 100%; margin-bottom: 10px; border-radius: 8px; }
+    button {
+      padding: 12px;
+      background: #0077ff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="app"></div>
+
+<script>
+vkBridge.send('VKWebAppInit');
+
+let userId = null;
+
+// ⚠️ УКАЖИ СВОЙ IP
+const API_URL = "http://ТВОЙ_IP:5000";
+
+const gardens = {};
+
+// создаём список садов (10 штук, можно поменять)
+for (let i = 1; i <= 12; i++) {
+  gardens[i] = {
+    id: i,
+    name: "Детский сад №" + i,
+    images: []
+  };
+}
+
+// заполняем картинки автоматически
+// ⚠️ ВАЖНО: укажи максимум изображений
+for (let g = 1; g <= 12; g++) {
+  for (let i = 1; i <= 20; i++) {
+    let img = `images/${g}_${i}.png`;
+    gardens[g].images.push(img);
+  }
+}
+
+vkBridge.send('VKWebAppGetUserInfo').then(data => {
+  userId = data.id;
+  renderGardens();
+});
+
+function renderGardens() {
+  const app = document.getElementById('app');
+  app.innerHTML = "<h2>Выберите детский сад</h2>";
+
+  Object.values(gardens).forEach(g => {
+    const div = document.createElement('div');
+    div.className = "card";
+    div.innerText = g.name;
+    div.onclick = () => openGarden(g);
+    app.appendChild(div);
+  });
+}
+
+function openGarden(garden) {
+  const app = document.getElementById('app');
+  app.innerHTML = `<h2>${garden.name}</h2>`;
+
+  garden.images.forEach(src => {
+    const img = document.createElement('img');
+    img.src = src;
+
+    img.onerror = () => img.remove(); // если файла нет — убираем
+
+    app.appendChild(img);
+  });
+
+  const btn = document.createElement('button');
+  btn.innerText = "Проголосовать";
+  btn.onclick = () => vote(garden.id);
+  app.appendChild(btn);
+}
+
+function vote(gardenId) {
+  fetch(API_URL + "/vote", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user: userId,
+      garden: gardenId
+    })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.status === "already") {
+      alert("Вы уже голосовали");
+    } else {
+      alert("Голос принят!");
+    }
+  });
+}
+</script>
+
+</body>
+</html>
